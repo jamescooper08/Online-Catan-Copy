@@ -80,6 +80,41 @@ button:focus-visible {
 	-webkit-user-drag: none;
 }
 
+.grid-point {
+	position: absolute;
+	z-index: 0;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: rgb(23 43 58 / 18%);
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+	transition: background 120ms ease, transform 120ms ease;
+}
+
+.grid-point.is-active {
+	background: #6b7280;
+	transform: translate(-50%, -50%) scale(1.5);
+}
+
+.delete-zone {
+	position: absolute;
+	left: 2rem;
+	bottom: 2rem;
+	padding: 0.75rem 1rem;
+	border: 2px dashed var(--coral);
+	border-radius: 0.5rem;
+	color: var(--coral-dark);
+	font-weight: 700;
+	user-select: none;
+	transition: background 120ms ease, color 120ms ease;
+}
+
+.delete-zone.is-active {
+	background: var(--coral);
+	color: white;
+}
+
 .plain-hexagon:active {
 	cursor: grabbing;
 
