@@ -1,11 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap');
-
 :root {
-	--ink: #172b3a;
-	--muted: #607482;
+	--ink: #000000;
+	--muted: #172b3a;
 	--cream: #f8f1df;
-	--coral: #e86a4a;
-	--coral-dark: #c75238;
+	--coral: #d6524d;
+	--coral-dark: #f23731;
 	--sea: #b9dfe0;
 }
 
