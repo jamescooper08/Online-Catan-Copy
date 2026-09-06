@@ -130,70 +130,27 @@ button:focus-visible {
 
 .dock {
 	position: absolute;
-	pointer-events: auto;
-	display: flex;
-	justify-content: center;
-	gap: 0.25rem;
-	width: clamp(7rem, 13vw, 9rem);
-	min-height: 4.5rem;
-	padding: 0;
+	width: 0;
+	height: 0;
 	transform: translate(-50%, -50%);
-	cursor: grab;
-	touch-action: none;
-	user-select: none;
+	pointer-events: none;
 }
 
 .dock-pier {
-	content: '';
-	display: block;
-	flex: 0 0 auto;
-	width: 1.55rem;
+	position: absolute;
 	height: 0.58rem;
 	border: 2px solid #5b5148;
 	border-radius: 0.16rem;
 	background: repeating-linear-gradient(90deg, #9d9589 0 0.28rem, #c4b9a7 0.28rem 0.4rem);
 	box-shadow: 0 0.18rem 0 rgb(23 43 58 / 24%);
-}
-
-.dock-edge-top .dock-pier-first {
-	transform: rotate(-12deg) translateY(0.18rem);
-}
-
-.dock-edge-top .dock-pier-second {
-	transform: rotate(12deg) translateY(0.18rem);
-}
-
-.dock-edge-bottom .dock-pier-first {
-	transform: rotate(12deg) translateY(-0.18rem);
-}
-
-.dock-edge-bottom .dock-pier-second {
-	transform: rotate(-12deg) translateY(-0.18rem);
-}
-
-.dock-edge-left,
-.dock-edge-right {
-	flex-direction: column;
-}
-
-.dock-edge-left .dock-pier,
-.dock-edge-right .dock-pier {
-	width: 0.58rem;
-	height: 1.55rem;
-}
-
-.dock-edge-left .dock-pier-first,
-.dock-edge-right .dock-pier-second {
-	transform: rotate(12deg) translateX(0.18rem);
-}
-
-.dock-edge-left .dock-pier-second,
-.dock-edge-right .dock-pier-first {
-	transform: rotate(-12deg) translateX(-0.18rem);
+	transform-origin: 0 50%;
+	pointer-events: none;
 }
 
 .dock-marker {
-	position: relative;
+	position: absolute;
+	left: 0;
+	top: 0;
 	z-index: 1;
 	display: grid;
 	place-items: center;
@@ -208,48 +165,18 @@ button:focus-visible {
 	font-size: 0.72rem;
 	line-height: 1.1;
 	text-align: center;
-}
-
-.dock-marker::after {
-	content: '';
-	position: absolute;
-	z-index: -1;
-	width: 1.35rem;
-	height: 0.65rem;
-	border: 2px solid #5b5148;
-	background: #9d9589;
-	box-shadow: 0 0.18rem 0 rgb(23 43 58 / 24%);
-}
-
-.dock-edge-top .dock-marker::after {
-	bottom: -0.65rem;
-	border-top: 0;
-}
-
-.dock-edge-right .dock-marker::after {
-	left: -0.65rem;
-	width: 0.65rem;
-	height: 1.35rem;
-	border-right: 0;
-}
-
-.dock-edge-bottom .dock-marker::after {
-	top: -0.65rem;
-	border-bottom: 0;
-}
-
-.dock-edge-left .dock-marker::after {
-	right: -0.65rem;
-	width: 0.65rem;
-	height: 1.35rem;
-	border-left: 0;
+	transform: translate(-50%, -50%);
+	pointer-events: auto;
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
 }
 
 .dock-specialized .dock-marker {
 	background: #f0c786;
 }
 
-.dock:active {
+.dock-marker:active {
 	cursor: grabbing;
 }
 

@@ -18,23 +18,22 @@ TERRAIN_TILES = (
 )
 
 DOCKS = [
-    {"id": "generic-north-west", "label": "3:1", "name": "Any resource", "left": "28%", "top": "20%", "edge": "top"},
-    {"id": "wood-north-east", "label": "2:1", "name": "Wood", "left": "72%", "top": "20%", "edge": "top"},
-    {"id": "generic-west-upper", "label": "3:1", "name": "Any resource", "left": "6%", "top": "32%", "edge": "left"},
-    {"id": "brick-west-lower", "label": "2:1", "name": "Brick", "left": "6%", "top": "62%", "edge": "left"},
-    {"id": "generic-east-upper", "label": "3:1", "name": "Any resource", "left": "94%", "top": "32%", "edge": "right"},
-    {"id": "sheep-east-lower", "label": "2:1", "name": "Sheep", "left": "94%", "top": "62%", "edge": "right"},
-    {"id": "generic-south-west", "label": "3:1", "name": "Any resource", "left": "28%", "top": "68%", "edge": "bottom"},
-    {"id": "wheat-south", "label": "2:1", "name": "Wheat", "left": "50%", "top": "73%", "edge": "bottom"},
-    {"id": "ore-south-east", "label": "2:1", "name": "Ore", "left": "72%", "top": "68%", "edge": "bottom"},
+    {"id": "generic-north-west", "label": "3:1", "name": "Any resource", "left": "28%", "top": "18%", "tileId": None, "edgeIndex": None},
+    {"id": "wood-north-east", "label": "2:1", "name": "Wood", "left": "72%", "top": "18%", "tileId": None, "edgeIndex": None},
+    {"id": "generic-west-upper", "label": "3:1", "name": "Any resource", "left": "8%", "top": "32%", "tileId": None, "edgeIndex": None},
+    {"id": "brick-west-lower", "label": "2:1", "name": "Brick", "left": "8%", "top": "62%", "tileId": None, "edgeIndex": None},
+    {"id": "generic-east-upper", "label": "3:1", "name": "Any resource", "left": "92%", "top": "32%", "tileId": None, "edgeIndex": None},
+    {"id": "sheep-east-lower", "label": "2:1", "name": "Sheep", "left": "92%", "top": "62%", "tileId": None, "edgeIndex": None},
+    {"id": "generic-south-west", "label": "3:1", "name": "Any resource", "left": "28%", "top": "82%", "tileId": None, "edgeIndex": None},
+    {"id": "wheat-south", "label": "2:1", "name": "Wheat", "left": "50%", "top": "88%", "tileId": None, "edgeIndex": None},
+    {"id": "ore-south-east", "label": "2:1", "name": "Ore", "left": "72%", "top": "82%", "tileId": None, "edgeIndex": None},
 ]
-DEFAULT_DOCK_EDGES = {dock["id"]: dock["edge"] for dock in DOCKS}
 
 
 def default_state():
     return {
         "tiles": [],
-        "docks": DOCKS,
+        "docks": [dict(dock) for dock in DOCKS],
         "available_terrain": list(TERRAIN_TILES),
         "next_tile_id": 0,
     }
@@ -49,7 +48,9 @@ def load_state():
             state = json.load(state_file)
         if {"tiles", "docks", "available_terrain", "next_tile_id"} <= state.keys():
             for dock in state["docks"]:
-                dock.setdefault("edge", DEFAULT_DOCK_EDGES.get(dock["id"], "bottom"))
+                dock.setdefault("tileId", None)
+                dock.setdefault("edgeIndex", None)
+                dock.pop("edge", None)
             return state
     except (OSError, json.JSONDecodeError):
         pass
@@ -112,14 +113,18 @@ def handle_action(action):
                 return True
 
     if action_type == "move_dock" and valid_position(action.get("position")):
-        edge = action.get("edge")
-        if edge not in {"top", "right", "bottom", "left"}:
+        tile_id = action.get("tileId")
+        edge_index = action.get("edgeIndex")
+        if tile_id is not None and not isinstance(tile_id, int):
+            return False
+        if edge_index is not None and edge_index not in range(6):
             return False
         for dock in state["docks"]:
             if dock["id"] == action.get("id"):
                 dock["left"] = action["position"]["left"]
                 dock["top"] = action["position"]["top"]
-                dock["edge"] = edge
+                dock["tileId"] = tile_id
+                dock["edgeIndex"] = edge_index
                 return True
 
     if action_type == "reset_map":

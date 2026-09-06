@@ -1,5 +1,12 @@
 import './App.css'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  findCoastalEdges,
+  measureHexes,
+  pierStyle,
+  placementFromEdge,
+  snapDockToCoast,
+} from './dockGeometry'
 
 function App() {
   const [page, setPage] = useState('welcome')
@@ -8,7 +15,10 @@ function App() {
   const [remainingTiles, setRemainingTiles] = useState(19)
   const [activeGridPoint, setActiveGridPoint] = useState(null)
   const [isOverDeleteZone, setIsOverDeleteZone] = useState(false)
+  const [dockLayouts, setDockLayouts] = useState({})
+  const [draggingDockId, setDraggingDockId] = useState(null)
   const socketRef = useRef(null)
+  const gameScreenRef = useRef(null)
 
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -26,6 +36,49 @@ function App() {
 
     return () => socket.close()
   }, [])
+
+  useLayoutEffect(() => {
+    const gameArea = gameScreenRef.current
+    if (!gameArea || page !== 'game') return
+
+    function layoutAttachedDocks() {
+      const hexes = measureHexes(gameArea)
+      const coastalEdges = findCoastalEdges(hexes)
+      const gameScreen = gameArea.getBoundingClientRect()
+      const nextLayouts = {}
+
+      for (const dock of docks) {
+        if (dock.id === draggingDockId) continue
+
+        const attached = coastalEdges.find((item) =>
+          item.hex.id === dock.tileId && item.edge.index === dock.edgeIndex,
+        )
+        if (!attached) continue
+
+        const placement = placementFromEdge(attached)
+        nextLayouts[dock.id] = {
+          left: asPercent(placement.x, gameScreen.width),
+          top: asPercent(placement.y, gameScreen.height),
+          x: placement.x,
+          y: placement.y,
+          start: placement.start,
+          end: placement.end,
+        }
+      }
+
+      setDockLayouts(nextLayouts)
+    }
+
+    layoutAttachedDocks()
+    const observer = new ResizeObserver(layoutAttachedDocks)
+    observer.observe(gameArea)
+    window.addEventListener('resize', layoutAttachedDocks)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', layoutAttachedDocks)
+    }
+  }, [docks, draggingDockId, hexagons, page])
 
   function sendAction(action) {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
@@ -158,21 +211,14 @@ function App() {
   function moveDock(event, dockId) {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
 
-    const dock = event.currentTarget
-    const gameScreen = dock.parentElement.parentElement.getBoundingClientRect()
-    const dockBounds = dock.getBoundingClientRect()
-    const x = Math.min(
-      Math.max(event.clientX - gameScreen.left, dockBounds.width / 2),
-      gameScreen.width - dockBounds.width / 2,
-    )
-    const y = Math.min(
-      Math.max(event.clientY - gameScreen.top, dockBounds.height / 2),
-      gameScreen.height - dockBounds.height / 2,
-    )
+    const gameArea = event.currentTarget.closest('.game-screen')
+    const gameScreen = gameArea.getBoundingClientRect()
+    const x = Math.min(Math.max(event.clientX - gameScreen.left, 24), gameScreen.width - 24)
+    const y = Math.min(Math.max(event.clientY - gameScreen.top, 24), gameScreen.height - 24)
 
     setDocks((currentDocks) => currentDocks.map((dock) =>
       dock.id === dockId
-        ? { ...dock, left: `${x}px`, top: `${y}px` }
+        ? { ...dock, left: `${x}px`, top: `${y}px`, tileId: null, edgeIndex: null }
         : dock,
     ))
   }
@@ -181,65 +227,43 @@ function App() {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
 
     event.currentTarget.releasePointerCapture(event.pointerId)
-    const dock = event.currentTarget
-    const gameArea = dock.parentElement.parentElement
+    const gameArea = event.currentTarget.closest('.game-screen')
     const gameScreen = gameArea.getBoundingClientRect()
-    const dockBounds = dock.getBoundingClientRect()
-    const centerX = dockBounds.left - gameScreen.left + dockBounds.width / 2
-    const centerY = dockBounds.top - gameScreen.top + dockBounds.height / 2
-    const tileBounds = [...gameArea.querySelectorAll('.plain-hexagon')]
-      .map((tile) => tile.getBoundingClientRect())
-      .reduce((bounds, tile) => ({
-        left: Math.min(bounds.left, tile.left - gameScreen.left),
-        right: Math.max(bounds.right, tile.right - gameScreen.left),
-        top: Math.min(bounds.top, tile.top - gameScreen.top),
-        bottom: Math.max(bounds.bottom, tile.bottom - gameScreen.top),
-      }), {
-        left: Number.POSITIVE_INFINITY,
-        right: Number.NEGATIVE_INFINITY,
-        top: Number.POSITIVE_INFINITY,
-        bottom: Number.NEGATIVE_INFINITY,
-      })
-    const hasBoard = tileBounds.left !== Number.POSITIVE_INFINITY
-    const board = hasBoard ? tileBounds : {
-      left: gameScreen.width * 0.12,
-      right: gameScreen.width * 0.88,
-      top: gameScreen.height * 0.2,
-      bottom: gameScreen.height * 0.68,
+    const markerBounds = event.currentTarget.getBoundingClientRect()
+    const point = {
+      x: markerBounds.left - gameScreen.left + markerBounds.width / 2,
+      y: markerBounds.top - gameScreen.top + markerBounds.height / 2,
     }
-    const edgeDistances = {
-      top: Math.abs(centerY - board.top),
-      right: Math.abs(board.right - centerX),
-      bottom: Math.abs(board.bottom - centerY),
-      left: Math.abs(centerX - board.left),
-    }
-    const nearestEdge = Object.entries(edgeDistances).reduce((closestEdge, edge) =>
-      edge[1] < closestEdge[1] ? edge : closestEdge,
-    )[0]
-    const halfDockWidth = dockBounds.width / 2
-    const halfDockHeight = dockBounds.height / 2
-    let snappedX = Math.min(Math.max(centerX, board.left + halfDockWidth), board.right - halfDockWidth)
-    let snappedY = Math.min(Math.max(centerY, board.top + halfDockHeight), board.bottom - halfDockHeight)
+    const occupied = new Set(
+      docks
+        .filter((dock) => dock.id !== dockId && dock.tileId != null && dock.edgeIndex != null)
+        .map((dock) => `${dock.tileId}:${dock.edgeIndex}`),
+    )
+    const snapped = snapDockToCoast(point, findCoastalEdges(measureHexes(gameArea)), occupied)
+    const position = snapped
+      ? {
+          left: asPercent(snapped.x, gameScreen.width),
+          top: asPercent(snapped.y, gameScreen.height),
+        }
+      : {
+          left: asPercent(point.x, gameScreen.width),
+          top: asPercent(point.y, gameScreen.height),
+        }
+    const tileId = snapped ? snapped.tileId : null
+    const edgeIndex = snapped ? snapped.edgeIndex : null
 
-    if (nearestEdge === 'top') snappedY = board.top - halfDockHeight
-    if (nearestEdge === 'right') snappedX = board.right + halfDockWidth
-    if (nearestEdge === 'bottom') snappedY = board.bottom + halfDockHeight
-    if (nearestEdge === 'left') snappedX = board.left - halfDockWidth
-
-    const position = {
-      left: asPercent(snappedX, gameScreen.width),
-      top: asPercent(snappedY, gameScreen.height),
-    }
+    setDraggingDockId(null)
     setDocks((currentDocks) => currentDocks.map((currentDock) =>
       currentDock.id === dockId
-        ? { ...currentDock, ...position, edge: nearestEdge }
+        ? { ...currentDock, ...position, tileId, edgeIndex }
         : currentDock,
     ))
     sendAction({
       type: 'move_dock',
       id: dockId,
       position,
-      edge: nearestEdge,
+      tileId,
+      edgeIndex,
     })
   }
 
@@ -257,29 +281,49 @@ function App() {
           </button>
         </section>
       ) : (
-        <section className="game-screen" aria-labelledby="game-title">
+        <section className="game-screen" aria-labelledby="game-title" ref={gameScreenRef}>
           <p className="eyebrow">Catan Online</p>
           <div className="docks" aria-label="Catan docks">
-            {docks.map((dock) => (
+            {docks.map((dock) => {
+              const layout = dock.id === draggingDockId ? null : dockLayouts[dock.id]
+              const left = layout?.left ?? dock.left
+              const top = layout?.top ?? dock.top
+              const attached = Boolean(layout)
+              const firstPier = attached ? pierStyle(layout, layout.start, 34) : null
+              const secondPier = attached ? pierStyle(layout, layout.end, 34) : null
+
+              return (
               <div
-                className={`dock dock-edge-${dock.edge || 'bottom'}${dock.label === '2:1' ? ' dock-specialized' : ''}`}
+                className={`dock${dock.label === '2:1' ? ' dock-specialized' : ''}${attached ? ' is-attached' : ''}`}
                 key={dock.id}
                 title={`${dock.label} ${dock.name}`}
-                style={{ left: dock.left, top: dock.top }}
-                onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
-                onPointerMove={(event) => moveDock(event, dock.id)}
-                onPointerUp={(event) => releaseDock(event, dock.id)}
-                onPointerCancel={(event) => releaseDock(event, dock.id)}
+                style={{ left, top }}
               >
-                <span className="dock-pier dock-pier-first" aria-hidden="true" />
-                <span className="dock-marker">
+                {attached && (
+                  <>
+                    <span className="dock-pier" style={firstPier} aria-hidden="true" />
+                    <span className="dock-pier" style={secondPier} aria-hidden="true" />
+                  </>
+                )}
+                <span
+                  className="dock-marker"
+                  role="button"
+                  aria-label={`${dock.label} ${dock.name} dock`}
+                  onPointerDown={(event) => {
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    setDraggingDockId(dock.id)
+                  }}
+                  onPointerMove={(event) => moveDock(event, dock.id)}
+                  onPointerUp={(event) => releaseDock(event, dock.id)}
+                  onPointerCancel={(event) => releaseDock(event, dock.id)}
+                >
                   <span className="dock-mark" aria-hidden="true">PORT</span>
                   <span className="dock-trade">{dock.label}</span>
                   <span className="dock-resource">{dock.name === 'Any resource' ? 'Any' : dock.name}</span>
                 </span>
-                <span className="dock-pier dock-pier-second" aria-hidden="true" />
               </div>
-            ))}
+              )
+            })}
           </div>
           <div
             className={`delete-zone${isOverDeleteZone ? ' is-active' : ''}`}
