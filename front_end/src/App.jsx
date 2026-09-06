@@ -1,14 +1,33 @@
 import './App.css'
+import { useState } from 'react'
 
 function App() {
-  
+  const [page, setPage] = useState('welcome')
 
   return (
-    <div className="App">
-      <h1 className="text-3xl font-bold underline">
-        Hello world! Hi
-      </h1>
-    </div>
+    <main className="app-shell">
+      {page === 'welcome' ? (
+        <section className="welcome-screen" aria-labelledby="welcome-title">
+          <p className="eyebrow">A strategy game for friends</p>
+          <h1 id="welcome-title">Catan Online</h1>
+          <p className="welcome-copy">
+            Build, trade, and settle the island together.
+          </p>
+          <button type="button" onClick={() => setPage('game')}>
+            Enter Game
+          </button>
+        </section>
+      ) : (
+        <section className="game-screen" aria-labelledby="game-title">
+          <p className="eyebrow">Catan Online</p>
+          <h1 id="game-title">Game</h1>
+          <p className="game-copy">Your game board will appear here.</p>
+          <button type="button" onClick={() => setPage('welcome')}>
+            Back to Welcome
+          </button>
+        </section>
+      )}
+    </main>
   )
 }
 
