@@ -69,15 +69,16 @@ button:focus-visible {
 .plain-hexagon {
 	display: block;
 	width: min(24vw, 220px);
-	height: auto;
+	aspect-ratio: 1 / 1;
 	position: absolute;
 	left: 50%;
 	top: 50%;
 	transform: translate(-50%, -50%) scale(0.5);
+	background: var(--hex-color);
+	clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
 	cursor: grab;
 	touch-action: none;
 	user-select: none;
-	-webkit-user-drag: none;
 }
 
 .grid-point {
@@ -120,10 +121,178 @@ button:focus-visible {
 
 }
 
-.game-screen button {
+.docks {
+	position: absolute;
+	inset: 0;
+	z-index: 3;
+	pointer-events: none;
+}
+
+.dock {
+	position: absolute;
+	pointer-events: auto;
+	display: flex;
+	justify-content: center;
+	gap: 0.25rem;
+	width: clamp(7rem, 13vw, 9rem);
+	min-height: 4.5rem;
+	padding: 0;
+	transform: translate(-50%, -50%);
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+
+.dock-pier {
+	content: '';
+	display: block;
+	flex: 0 0 auto;
+	width: 1.55rem;
+	height: 0.58rem;
+	border: 2px solid #5b5148;
+	border-radius: 0.16rem;
+	background: repeating-linear-gradient(90deg, #9d9589 0 0.28rem, #c4b9a7 0.28rem 0.4rem);
+	box-shadow: 0 0.18rem 0 rgb(23 43 58 / 24%);
+}
+
+.dock-edge-top .dock-pier-first {
+	transform: rotate(-12deg) translateY(0.18rem);
+}
+
+.dock-edge-top .dock-pier-second {
+	transform: rotate(12deg) translateY(0.18rem);
+}
+
+.dock-edge-bottom .dock-pier-first {
+	transform: rotate(12deg) translateY(-0.18rem);
+}
+
+.dock-edge-bottom .dock-pier-second {
+	transform: rotate(-12deg) translateY(-0.18rem);
+}
+
+.dock-edge-left,
+.dock-edge-right {
+	flex-direction: column;
+}
+
+.dock-edge-left .dock-pier,
+.dock-edge-right .dock-pier {
+	width: 0.58rem;
+	height: 1.55rem;
+}
+
+.dock-edge-left .dock-pier-first,
+.dock-edge-right .dock-pier-second {
+	transform: rotate(12deg) translateX(0.18rem);
+}
+
+.dock-edge-left .dock-pier-second,
+.dock-edge-right .dock-pier-first {
+	transform: rotate(-12deg) translateX(-0.18rem);
+}
+
+.dock-marker {
+	position: relative;
+	z-index: 1;
+	display: grid;
+	place-items: center;
+	min-width: 4.2rem;
+	min-height: 3.65rem;
+	padding: 0.35rem 0.45rem 0.4rem;
+	border: 2px solid #654833;
+	border-radius: 0.9rem 0.9rem 0.55rem 0.55rem;
+	background: #f4d9a7;
+	box-shadow: 0 0.3rem 0 #654833, 0 0.55rem 0 rgb(23 43 58 / 12%);
+	color: #332419;
+	font-size: 0.72rem;
+	line-height: 1.1;
+	text-align: center;
+}
+
+.dock-marker::after {
+	content: '';
+	position: absolute;
+	z-index: -1;
+	width: 1.35rem;
+	height: 0.65rem;
+	border: 2px solid #5b5148;
+	background: #9d9589;
+	box-shadow: 0 0.18rem 0 rgb(23 43 58 / 24%);
+}
+
+.dock-edge-top .dock-marker::after {
+	bottom: -0.65rem;
+	border-top: 0;
+}
+
+.dock-edge-right .dock-marker::after {
+	left: -0.65rem;
+	width: 0.65rem;
+	height: 1.35rem;
+	border-right: 0;
+}
+
+.dock-edge-bottom .dock-marker::after {
+	top: -0.65rem;
+	border-bottom: 0;
+}
+
+.dock-edge-left .dock-marker::after {
+	right: -0.65rem;
+	width: 0.65rem;
+	height: 1.35rem;
+	border-left: 0;
+}
+
+.dock-specialized .dock-marker {
+	background: #f0c786;
+}
+
+.dock:active {
+	cursor: grabbing;
+}
+
+.dock-mark {
+	color: #8b5b36;
+	font-size: 0.55rem;
+	font-weight: 800;
+	letter-spacing: 0.12em;
+}
+
+.dock-trade {
+	font-size: 1.15rem;
+	font-weight: 800;
+}
+
+.dock-resource {
+	max-width: 5rem;
+	font-weight: 700;
+}
+
+.game-screen .back-button {
   position: absolute;
   bottom: 2rem;
   right: 2rem;
+}
+
+.game-screen .spawn-button {
+	position: absolute;
+	bottom: 2rem;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.game-screen .spawn-button:hover {
+	transform: translateX(-50%) translateY(-2px);
+}
+
+.game-screen .spawn-button:disabled,
+.game-screen .spawn-button:disabled:hover {
+	background: #8b8f87;
+	cursor: not-allowed;
+	opacity: 0.8;
+	transform: translateX(-50%);
 }
 .eyebrow {
 	margin: 0 0 1rem;

@@ -7,3 +7,11 @@ This is mainly going to be used to document my design process and be used as an 
 # Assets
  - All Catan cards (Roads, Settelments, Cities, Development Cards, Recource Cards, Robber)
  - Move and lock ability for the assets
+
+ # Run commands
+
+python -m pip install -r .\back_end\requirements.txt
+python .\back_end\server.py
+
+cd .\front_end
+npm.cmd run dev -- --host

@@ -1,18 +1,45 @@
 import './App.css'
 import { useEffect, useRef, useState } from 'react'
-import plainHexagon from './assets/Plain Hexagon.png'
 
 function App() {
   const [page, setPage] = useState('welcome')
   const [hexagons, setHexagons] = useState([])
+  const [docks, setDocks] = useState([])
+  const [remainingTiles, setRemainingTiles] = useState(19)
   const [activeGridPoint, setActiveGridPoint] = useState(null)
   const [isOverDeleteZone, setIsOverDeleteZone] = useState(false)
-  const nextHexagonId = useRef(0)
-  const spawnLocation = { left: '80%', top: '80%' }
+  const socketRef = useRef(null)
+
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+    const socket = new WebSocket(`${protocol}://${window.location.hostname}:8765`)
+    socketRef.current = socket
+
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data)
+      if (message.type !== 'map_state') return
+
+      setHexagons(message.state.tiles)
+      setDocks(message.state.docks)
+      setRemainingTiles(message.state.remaining_tiles)
+    }
+
+    return () => socket.close()
+  }, [])
+
+  function sendAction(action) {
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify(action))
+    }
+  }
+
+  function asPercent(value, total) {
+    return `${Math.round((value / total) * 1000) / 10}%`
+  }
 
   function getGridPoints(gameScreen, imageBounds) {
-    const horizontalOffset = imageBounds.width * 0.728
-    const verticalOffset = imageBounds.height * 0.6525
+    const horizontalOffset = imageBounds.width * 0.92
+    const verticalOffset = imageBounds.height * 0.82
     const centerX = gameScreen.width / 2
     const centerY = gameScreen.height / 2
     const points = []
@@ -96,7 +123,7 @@ function App() {
     image.releasePointerCapture(event.pointerId)
 
     if (isHexagonOverDeleteZone(image)) {
-      setHexagons((currentHexagons) => currentHexagons.filter((hexagon) => hexagon.id !== hexagonId))
+      sendAction({ type: 'remove_tile', id: hexagonId })
       setActiveGridPoint(null)
       setIsOverDeleteZone(false)
       return
@@ -107,33 +134,114 @@ function App() {
     setIsOverDeleteZone(false)
 
     if (closestPosition) {
+      const gameScreen = image.parentElement.getBoundingClientRect()
+      const position = {
+        left: asPercent(closestPosition.x, gameScreen.width),
+        top: asPercent(closestPosition.y, gameScreen.height),
+      }
       setHexagons((currentHexagons) => currentHexagons.map((hexagon) =>
         hexagon.id === hexagonId
           ? {
               ...hexagon,
-              position: {
-                left: `${closestPosition.x}px`,
-                top: `${closestPosition.y}px`,
-              },
+              position,
             }
           : hexagon,
       ))
+      sendAction({ type: 'move_tile', id: hexagonId, position })
     }
   }
 
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (page === 'game' && event.key.toLowerCase() === 'b' && !event.repeat) {
-        setHexagons((currentHexagons) => [
-          ...currentHexagons,
-              { id: nextHexagonId.current++, position: spawnLocation },
-        ])
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
+  function spawnHexagon() {
+    sendAction({ type: 'spawn_tile' })
+  }
 
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [page])
+  function moveDock(event, dockId) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+
+    const dock = event.currentTarget
+    const gameScreen = dock.parentElement.parentElement.getBoundingClientRect()
+    const dockBounds = dock.getBoundingClientRect()
+    const x = Math.min(
+      Math.max(event.clientX - gameScreen.left, dockBounds.width / 2),
+      gameScreen.width - dockBounds.width / 2,
+    )
+    const y = Math.min(
+      Math.max(event.clientY - gameScreen.top, dockBounds.height / 2),
+      gameScreen.height - dockBounds.height / 2,
+    )
+
+    setDocks((currentDocks) => currentDocks.map((dock) =>
+      dock.id === dockId
+        ? { ...dock, left: `${x}px`, top: `${y}px` }
+        : dock,
+    ))
+  }
+
+  function releaseDock(event, dockId) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+
+    event.currentTarget.releasePointerCapture(event.pointerId)
+    const dock = event.currentTarget
+    const gameArea = dock.parentElement.parentElement
+    const gameScreen = gameArea.getBoundingClientRect()
+    const dockBounds = dock.getBoundingClientRect()
+    const centerX = dockBounds.left - gameScreen.left + dockBounds.width / 2
+    const centerY = dockBounds.top - gameScreen.top + dockBounds.height / 2
+    const tileBounds = [...gameArea.querySelectorAll('.plain-hexagon')]
+      .map((tile) => tile.getBoundingClientRect())
+      .reduce((bounds, tile) => ({
+        left: Math.min(bounds.left, tile.left - gameScreen.left),
+        right: Math.max(bounds.right, tile.right - gameScreen.left),
+        top: Math.min(bounds.top, tile.top - gameScreen.top),
+        bottom: Math.max(bounds.bottom, tile.bottom - gameScreen.top),
+      }), {
+        left: Number.POSITIVE_INFINITY,
+        right: Number.NEGATIVE_INFINITY,
+        top: Number.POSITIVE_INFINITY,
+        bottom: Number.NEGATIVE_INFINITY,
+      })
+    const hasBoard = tileBounds.left !== Number.POSITIVE_INFINITY
+    const board = hasBoard ? tileBounds : {
+      left: gameScreen.width * 0.12,
+      right: gameScreen.width * 0.88,
+      top: gameScreen.height * 0.2,
+      bottom: gameScreen.height * 0.68,
+    }
+    const edgeDistances = {
+      top: Math.abs(centerY - board.top),
+      right: Math.abs(board.right - centerX),
+      bottom: Math.abs(board.bottom - centerY),
+      left: Math.abs(centerX - board.left),
+    }
+    const nearestEdge = Object.entries(edgeDistances).reduce((closestEdge, edge) =>
+      edge[1] < closestEdge[1] ? edge : closestEdge,
+    )[0]
+    const halfDockWidth = dockBounds.width / 2
+    const halfDockHeight = dockBounds.height / 2
+    let snappedX = Math.min(Math.max(centerX, board.left + halfDockWidth), board.right - halfDockWidth)
+    let snappedY = Math.min(Math.max(centerY, board.top + halfDockHeight), board.bottom - halfDockHeight)
+
+    if (nearestEdge === 'top') snappedY = board.top - halfDockHeight
+    if (nearestEdge === 'right') snappedX = board.right + halfDockWidth
+    if (nearestEdge === 'bottom') snappedY = board.bottom + halfDockHeight
+    if (nearestEdge === 'left') snappedX = board.left - halfDockWidth
+
+    const position = {
+      left: asPercent(snappedX, gameScreen.width),
+      top: asPercent(snappedY, gameScreen.height),
+    }
+    setDocks((currentDocks) => currentDocks.map((currentDock) =>
+      currentDock.id === dockId
+        ? { ...currentDock, ...position, edge: nearestEdge }
+        : currentDock,
+    ))
+    sendAction({
+      type: 'move_dock',
+      id: dockId,
+      position,
+      edge: nearestEdge,
+    })
+  }
 
   return (
     <main className="app-shell">
@@ -151,6 +259,28 @@ function App() {
       ) : (
         <section className="game-screen" aria-labelledby="game-title">
           <p className="eyebrow">Catan Online</p>
+          <div className="docks" aria-label="Catan docks">
+            {docks.map((dock) => (
+              <div
+                className={`dock dock-edge-${dock.edge || 'bottom'}${dock.label === '2:1' ? ' dock-specialized' : ''}`}
+                key={dock.id}
+                title={`${dock.label} ${dock.name}`}
+                style={{ left: dock.left, top: dock.top }}
+                onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
+                onPointerMove={(event) => moveDock(event, dock.id)}
+                onPointerUp={(event) => releaseDock(event, dock.id)}
+                onPointerCancel={(event) => releaseDock(event, dock.id)}
+              >
+                <span className="dock-pier dock-pier-first" aria-hidden="true" />
+                <span className="dock-marker">
+                  <span className="dock-mark" aria-hidden="true">PORT</span>
+                  <span className="dock-trade">{dock.label}</span>
+                  <span className="dock-resource">{dock.name === 'Any resource' ? 'Any' : dock.name}</span>
+                </span>
+                <span className="dock-pier dock-pier-second" aria-hidden="true" />
+              </div>
+            ))}
+          </div>
           <div
             className={`delete-zone${isOverDeleteZone ? ' is-active' : ''}`}
             data-delete-zone
@@ -165,15 +295,13 @@ function App() {
             />
           )}
           {hexagons.map((hexagon, index) => (
-            <img
+            <div
               key={hexagon.id}
               className="plain-hexagon"
-              src={plainHexagon}
-              alt={`Plain hexagon game tile ${index + 1}`}
+              role="img"
+              aria-label={`${hexagon.terrain.name} terrain tile ${index + 1}`}
               data-hexagon-id={hexagon.id}
-              style={hexagon.position}
-              draggable="false"
-              onDragStart={(event) => event.preventDefault()}
+              style={{ ...hexagon.position, '--hex-color': hexagon.terrain.color }}
               onPointerDown={(event) => event.currentTarget.setPointerCapture(event.pointerId)}
               onPointerMove={(event) => moveHexagon(event, hexagon.id)}
               onPointerUp={(event) => snapHexagon(event, hexagon.id)}
@@ -184,7 +312,15 @@ function App() {
               }}
             />
           ))}
-          <button type="button" onClick={() => setPage('welcome')}>
+          <button
+            className="spawn-button"
+            type="button"
+            onClick={spawnHexagon}
+            disabled={remainingTiles === 0}
+          >
+            {remainingTiles > 0 ? `Spawn Hexagon (${remainingTiles})` : 'All Tiles Spawned'}
+          </button>
+          <button className="back-button" type="button" onClick={() => setPage('welcome')}>
             Back to Welcome
           </button>
         </section>
