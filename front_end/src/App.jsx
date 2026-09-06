@@ -20,8 +20,6 @@ function App() {
       ) : (
         <section className="game-screen" aria-labelledby="game-title">
           <p className="eyebrow">Catan Online</p>
-          <h1 id="game-title">Game</h1>
-          <p className="game-copy">Your game board will appear here.</p>
           <button type="button" onClick={() => setPage('welcome')}>
             Back to Welcome
           </button>

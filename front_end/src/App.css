@@ -59,6 +59,16 @@ button:focus-visible {
 	text-align: center;
 }
 
+.game-screen {
+	width: min(100%, 1200px);
+	min-height: calc(100vh - 3rem);
+	padding: clamp(2.5rem, 6vw, 5rem);
+}
+.game-screen button {
+  position: absolute;
+  bottom: 2rem;
+  right: 2rem;
+}
 .eyebrow {
 	margin: 0 0 1rem;
 	color: var(--coral-dark);
@@ -67,7 +77,16 @@ button:focus-visible {
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
 }
-
+.game-screen .eyebrow {
+  padding: 0.5rem 1rem;
+  background: var(--coral);
+  color: white;
+  border-radius: 999px;
+  font-size: 1rem;
+  position: absolute;
+  left: 2rem;
+  top: 2rem;
+}
 h1 {
 	margin: 0;
 	font: 700 clamp(2.75rem, 8vw, 5.25rem) / 0.95 'Space Grotesk', sans-serif;
