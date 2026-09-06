@@ -63,7 +63,28 @@ button:focus-visible {
 	width: min(100%, 1200px);
 	min-height: calc(100vh - 3rem);
 	padding: clamp(2.5rem, 6vw, 5rem);
+	position: relative;
 }
+
+.plain-hexagon {
+	display: block;
+	width: min(24vw, 220px);
+	height: auto;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%) scale(0.5);
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+	-webkit-user-drag: none;
+}
+
+.plain-hexagon:active {
+	cursor: grabbing;
+
+}
+
 .game-screen button {
   position: absolute;
   bottom: 2rem;
