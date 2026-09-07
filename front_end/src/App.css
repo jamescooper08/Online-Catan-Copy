@@ -246,8 +246,7 @@ h1 {
 	letter-spacing: 0;
 }
 
-.welcome-copy,
-.game-copy {
+.welcome-copy {
 	margin: 1.5rem auto 2rem;
 	max-width: 30rem;
 	color: var(--muted);

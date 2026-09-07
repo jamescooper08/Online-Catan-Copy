@@ -105,13 +105,6 @@ def handle_action(action):
                 tile["position"] = action["position"]
                 return True
 
-    if action_type == "remove_tile":
-        for index, tile in enumerate(state["tiles"]):
-            if tile["id"] == action.get("id"):
-                state["available_terrain"].append(tile["terrain"])
-                state["tiles"].pop(index)
-                return True
-
     if action_type == "move_dock" and valid_position(action.get("position")):
         tile_id = action.get("tileId")
         edge_index = action.get("edgeIndex")

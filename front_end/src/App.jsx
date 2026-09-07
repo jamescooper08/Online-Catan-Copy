@@ -186,10 +186,6 @@ function App() {
     sendAction({ type: 'reset_map' })
   }
 
-  function resetMap() {
-    sendAction({ type: 'reset_map' })
-  }
-  
   function moveDock(event, dockId) {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
 
