@@ -20,13 +20,13 @@ TERRAIN_TILES = (
 DOCKS = [
     {"id": "generic-north-west", "label": "3:1", "name": "Any resource", "left": "88%", "top": "10%", "tileId": None, "edgeIndex": None},
     {"id": "wood-north-east", "label": "2:1", "name": "Wood", "left": "96%", "top": "10%", "tileId": None, "edgeIndex": None},
-    {"id": "generic-west-upper", "label": "3:1", "name": "Any resource", "left": "88%", "top": "30%", "tileId": None, "edgeIndex": None},
-    {"id": "brick-west-lower", "label": "2:1", "name": "Brick", "left": "96%", "top": "30%", "tileId": None, "edgeIndex": None},
-    {"id": "generic-east-upper", "label": "3:1", "name": "Any resource", "left": "88%", "top": "50%", "tileId": None, "edgeIndex": None},
-    {"id": "sheep-east-lower", "label": "2:1", "name": "Sheep", "left": "96%", "top": "50%", "tileId": None, "edgeIndex": None},
-    {"id": "generic-south-west", "label": "3:1", "name": "Any resource", "left": "88%", "top": "70%", "tileId": None, "edgeIndex": None},
-    {"id": "wheat-south", "label": "2:1", "name": "Wheat", "left": "96%", "top": "70%", "tileId": None, "edgeIndex": None},
-    {"id": "ore-south-east", "label": "2:1", "name": "Ore", "left": "88%", "top": "90%", "tileId": None, "edgeIndex": None},
+    {"id": "generic-west-upper", "label": "3:1", "name": "Any resource", "left": "88%", "top": "25%", "tileId": None, "edgeIndex": None},
+    {"id": "brick-west-lower", "label": "2:1", "name": "Brick", "left": "96%", "top": "25%", "tileId": None, "edgeIndex": None},
+    {"id": "generic-east-upper", "label": "3:1", "name": "Any resource", "left": "88%", "top": "40%", "tileId": None, "edgeIndex": None},
+    {"id": "sheep-east-lower", "label": "2:1", "name": "Sheep", "left": "96%",("top"): "40%", "tileId": None,("edgeIndex"): None},
+    {"id": "generic-south-west",("label"):("3:1"),("name"):("Any resource"),("left"):("88%"),("top"):("55%"),("tileId"): None,("edgeIndex"): None},
+    {"id": "wheat-south",("label"):("2:1"),("name"):("Wheat"),("left"):("96%"),("top"):("55%"),("tileId"): None,("edgeIndex"): None},
+    {"id": "ore-south-east", "label": "2:1", "name": "Ore", "left": "88%", "top": "70%", "tileId": None, "edgeIndex": None},
 ]
 
 
