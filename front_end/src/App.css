@@ -98,20 +98,21 @@ button:focus-visible {
 	transform: translate(-50%, -50%) scale(1.5);
 }
 
-.delete-zone {
+.reset-button {
 	position: absolute;
 	left: 2rem;
 	bottom: 2rem;
 	padding: 0.75rem 1rem;
-	border: 2px dashed var(--coral);
+	border: 2px solid var(--coral);
 	border-radius: 0.5rem;
+	background: transparent;
 	color: var(--coral-dark);
+	cursor: pointer;
 	font-weight: 700;
-	user-select: none;
 	transition: background 120ms ease, color 120ms ease;
 }
 
-.delete-zone.is-active {
+.reset-button:hover {
 	background: var(--coral);
 	color: white;
 }

@@ -14,7 +14,6 @@ function App() {
   const [docks, setDocks] = useState([])
   const [remainingTiles, setRemainingTiles] = useState(19)
   const [activeGridPoint, setActiveGridPoint] = useState(null)
-  const [isOverDeleteZone, setIsOverDeleteZone] = useState(false)
   const [dockLayouts, setDockLayouts] = useState({})
   const [draggingDockId, setDraggingDockId] = useState(null)
   const socketRef = useRef(null)
@@ -129,21 +128,6 @@ function App() {
     return closestPoint && closestPoint.distance <= 50 ? closestPoint : null
   }
 
-  function isHexagonOverDeleteZone(image) {
-    const deleteZone = image.parentElement.querySelector('[data-delete-zone]')
-    if (!deleteZone) return false
-
-    const imageBounds = image.getBoundingClientRect()
-    const deleteBounds = deleteZone.getBoundingClientRect()
-    const imageCenterX = imageBounds.left + imageBounds.width / 2
-    const imageCenterY = imageBounds.top + imageBounds.height / 2
-
-    return imageCenterX >= deleteBounds.left
-      && imageCenterX <= deleteBounds.right
-      && imageCenterY >= deleteBounds.top
-      && imageCenterY <= deleteBounds.bottom
-  }
-
   function moveHexagon(event, hexagonId) {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
 
@@ -164,9 +148,7 @@ function App() {
         ? { ...hexagon, position: { left: `${x}px`, top: `${y}px` } }
         : hexagon,
     ))
-    const overDeleteZone = isHexagonOverDeleteZone(image)
-    setIsOverDeleteZone(overDeleteZone)
-    setActiveGridPoint(overDeleteZone ? null : getClosestGridPoint(image))
+    setActiveGridPoint(getClosestGridPoint(image))
   }
 
   function snapHexagon(event, hexagonId) {
@@ -175,16 +157,8 @@ function App() {
 
     image.releasePointerCapture(event.pointerId)
 
-    if (isHexagonOverDeleteZone(image)) {
-      sendAction({ type: 'remove_tile', id: hexagonId })
-      setActiveGridPoint(null)
-      setIsOverDeleteZone(false)
-      return
-    }
-
     const closestPosition = getClosestGridPoint(image)
     setActiveGridPoint(null)
-    setIsOverDeleteZone(false)
 
     if (closestPosition) {
       const gameScreen = image.parentElement.getBoundingClientRect()
@@ -208,6 +182,14 @@ function App() {
     sendAction({ type: 'spawn_tile' })
   }
 
+  function resetMap() {
+    sendAction({ type: 'reset_map' })
+  }
+
+  function resetMap() {
+    sendAction({ type: 'reset_map' })
+  }
+  
   function moveDock(event, dockId) {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
 
@@ -325,12 +307,9 @@ function App() {
               )
             })}
           </div>
-          <div
-            className={`delete-zone${isOverDeleteZone ? ' is-active' : ''}`}
-            data-delete-zone
-          >
-            Delete
-          </div>
+          <button className="reset-button" type="button" onClick={resetMap}>
+            Reset Map
+          </button>
           {activeGridPoint && (
             <span
               className="grid-point is-active"
@@ -352,7 +331,6 @@ function App() {
               onPointerCancel={(event) => {
                 event.currentTarget.releasePointerCapture(event.pointerId)
                 setActiveGridPoint(null)
-                setIsOverDeleteZone(false)
               }}
             />
           ))}
