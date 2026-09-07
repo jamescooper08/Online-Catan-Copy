@@ -2,21 +2,35 @@ import './App.css'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   findCoastalEdges,
+  findBoardEdges,
+  findBoardVertices,
   measureHexes,
   pierStyle,
   placementFromEdge,
   snapDockToCoast,
+  snapPiece,
 } from './dockGeometry'
 
 function App() {
+  const playerColors = [
+    { id: 'red', label: 'Red', value: '#d94f49' },
+    { id: 'blue', label: 'Blue', value: '#3d78b8' },
+    { id: 'orange', label: 'Orange', value: '#e28a32' },
+    { id: 'white', label: 'White', value: '#f4f1e8' },
+  ]
   const [page, setPage] = useState('welcome')
   const [hexagons, setHexagons] = useState([])
   const [docks, setDocks] = useState([])
+  const [pieces, setPieces] = useState([])
+  const [selectedColor, setSelectedColor] = useState('red')
   const [remainingTiles, setRemainingTiles] = useState(19)
   const [activeGridPoint, setActiveGridPoint] = useState(null)
   const [dockLayouts, setDockLayouts] = useState({})
   const [draggingDockId, setDraggingDockId] = useState(null)
+  const [draggingPieceId, setDraggingPieceId] = useState(null)
+  const [pieceLayouts, setPieceLayouts] = useState({})
   const socketRef = useRef(null)
+  const pendingActionsRef = useRef([])
   const gameScreenRef = useRef(null)
 
   useEffect(() => {
@@ -24,12 +38,18 @@ function App() {
     const socket = new WebSocket(`${protocol}://${window.location.hostname}:8765`)
     socketRef.current = socket
 
+    socket.onopen = () => {
+      for (const action of pendingActionsRef.current) socket.send(JSON.stringify(action))
+      pendingActionsRef.current = []
+    }
+
     socket.onmessage = (event) => {
       const message = JSON.parse(event.data)
       if (message.type !== 'map_state') return
 
       setHexagons(message.state.tiles)
       setDocks(message.state.docks)
+      setPieces(message.state.pieces ?? [])
       setRemainingTiles(message.state.remaining_tiles)
     }
 
@@ -79,10 +99,58 @@ function App() {
     }
   }, [docks, draggingDockId, hexagons, page])
 
+  useLayoutEffect(() => {
+    const gameArea = gameScreenRef.current
+    if (!gameArea || page !== 'game') return
+
+    function layoutPieces() {
+      const hexes = measureHexes(gameArea)
+      const gameScreen = gameArea.getBoundingClientRect()
+      const edges = findBoardEdges(hexes)
+      const vertices = findBoardVertices(hexes)
+      const nextLayouts = {}
+
+      for (const piece of pieces) {
+        if (piece.id === draggingPieceId) continue
+        let point = null
+        if (piece.pieceType === 'road' && piece.tileId != null && piece.edgeIndex != null) {
+          const edge = edges.find((item) => item.hex.id === piece.tileId && item.edge.index === piece.edgeIndex)
+          point = edge?.edge.mid
+          if (edge) {
+            nextLayouts[piece.id] = {
+              left: asPercent(point.x, gameScreen.width),
+              top: asPercent(point.y, gameScreen.height),
+              rotation: Math.atan2(edge.edge.end.y - edge.edge.start.y, edge.edge.end.x - edge.edge.start.x) * 180 / Math.PI,
+            }
+          }
+        } else if (piece.pieceType !== 'road' && piece.vertexKey) {
+          point = vertices.find((vertex) => vertex.key === piece.vertexKey)
+        }
+        if (point && !nextLayouts[piece.id]) {
+          nextLayouts[piece.id] = { left: asPercent(point.x, gameScreen.width), top: asPercent(point.y, gameScreen.height), rotation: 0 }
+        }
+      }
+
+      setPieceLayouts(nextLayouts)
+    }
+
+    layoutPieces()
+    const observer = new ResizeObserver(layoutPieces)
+    observer.observe(gameArea)
+    window.addEventListener('resize', layoutPieces)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', layoutPieces)
+    }
+  }, [draggingPieceId, hexagons, page, pieces])
+
   function sendAction(action) {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(JSON.stringify(action))
+      return
     }
+
+    pendingActionsRef.current.push(action)
   }
 
   function asPercent(value, total) {
@@ -184,6 +252,59 @@ function App() {
 
   function resetMap() {
     sendAction({ type: 'reset_map' })
+  }
+
+  function spawnPiece(pieceType) {
+    sendAction({ type: 'spawn_piece', pieceType, color: selectedColor })
+  }
+
+  function movePiece(event, pieceId) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+    const gameArea = event.currentTarget.closest('.game-screen')
+    const gameScreen = gameArea.getBoundingClientRect()
+    const x = Math.min(Math.max(event.clientX - gameScreen.left, 12), gameScreen.width - 12)
+    const y = Math.min(Math.max(event.clientY - gameScreen.top, 12), gameScreen.height - 12)
+    setPieces((currentPieces) => currentPieces.map((piece) =>
+      piece.id === pieceId
+        ? { ...piece, position: { left: `${x}px`, top: `${y}px` }, tileId: null, edgeIndex: null, vertexKey: null }
+        : piece,
+    ))
+  }
+
+  function releasePiece(event, pieceId) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+    event.currentTarget.releasePointerCapture(event.pointerId)
+    const gameArea = event.currentTarget.closest('.game-screen')
+    const gameScreen = gameArea.getBoundingClientRect()
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const point = { x: bounds.left - gameScreen.left + bounds.width / 2, y: bounds.top - gameScreen.top + bounds.height / 2 }
+    const piece = pieces.find((item) => item.id === pieceId)
+    if (!piece) return
+    const hexes = measureHexes(gameArea)
+    const edges = findBoardEdges(hexes).map((item) => ({ point: item.edge.mid, tileId: item.hex.id, edgeIndex: item.edge.index, width: item.hex.width }))
+    const vertices = findBoardVertices(hexes).map((vertex) => ({ ...vertex, point: vertex, width: hexes[0]?.width }))
+    const occupied = new Set(pieces.filter((item) => item.id !== pieceId).map((item) => item.pieceType === 'road' ? `${item.tileId}:${item.edgeIndex}` : item.vertexKey))
+    const target = piece.pieceType === 'road'
+      ? snapPiece(point, edges, occupied, (anchor) => `${anchor.tileId}:${anchor.edgeIndex}`)
+      : snapPiece(point, vertices, occupied, (anchor) => anchor.key)
+    const position = target
+      ? { left: asPercent(target.point.x, gameScreen.width), top: asPercent(target.point.y, gameScreen.height) }
+      : { left: asPercent(point.x, gameScreen.width), top: asPercent(point.y, gameScreen.height) }
+    const rotation = target?.start && target?.end
+      ? Math.atan2(target.end.y - target.start.y, target.end.x - target.start.x) * 180 / Math.PI
+      : 0
+    const placement = piece.pieceType === 'road'
+      ? { tileId: target?.tileId ?? null, edgeIndex: target?.edgeIndex ?? null, vertexKey: null }
+      : { tileId: null, edgeIndex: null, vertexKey: target?.key ?? null }
+    setDraggingPieceId(null)
+    if (piece.pieceType === 'road' && target) {
+      setPieceLayouts((currentLayouts) => ({
+        ...currentLayouts,
+        [pieceId]: { ...position, rotation },
+      }))
+    }
+    setPieces((currentPieces) => currentPieces.map((currentPiece) => currentPiece.id === pieceId ? { ...currentPiece, ...placement, position } : currentPiece))
+    sendAction({ type: 'move_piece', id: pieceId, position, ...placement })
   }
 
   function moveDock(event, dockId) {
@@ -303,9 +424,55 @@ function App() {
               )
             })}
           </div>
+          <div className="pieces" aria-label="Catan game pieces">
+            {pieces.map((piece) => {
+              const layout = piece.id === draggingPieceId ? null : pieceLayouts[piece.id]
+              return (
+                <span
+                  className={`piece piece-${piece.pieceType}`}
+                  key={piece.id}
+                  title={`Player piece: ${piece.pieceType}`}
+                  style={{
+                    left: layout?.left ?? piece.position.left,
+                    top: layout?.top ?? piece.position.top,
+                    '--road-angle': `${layout?.rotation ?? 0}deg`,
+                    '--player-color': playerColors.find((color) => color.id === piece.color)?.value ?? '#d94f49',
+                  }}
+                  role="button"
+                  aria-label={`Player ${piece.pieceType}`}
+                  onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingPieceId(piece.id) }}
+                  onPointerMove={(event) => movePiece(event, piece.id)}
+                  onPointerUp={(event) => releasePiece(event, piece.id)}
+                  onPointerCancel={(event) => releasePiece(event, piece.id)}
+                />
+              )
+            })}
+          </div>
           <button className="reset-button" type="button" onClick={resetMap}>
             Reset Map
           </button>
+          <div className="piece-controls" aria-label="Choose player color and add game pieces">
+            <div className="color-controls" aria-label="Player colors">
+              {playerColors.map((color) => (
+                <button
+                  className={`color-button color-${color.id}${selectedColor === color.id ? ' is-selected' : ''}`}
+                  key={color.id}
+                  type="button"
+                  aria-label={`Select ${color.label} player pieces`}
+                  aria-pressed={selectedColor === color.id}
+                  onClick={() => setSelectedColor(color.id)}
+                >
+                  <span className="color-swatch" aria-hidden="true" />
+                  {color.label}
+                </button>
+              ))}
+            </div>
+            <div className="piece-type-controls" aria-label={`Add ${selectedColor} player pieces`}>
+              <button type="button" onClick={() => spawnPiece('road')}>+ Road</button>
+              <button type="button" onClick={() => spawnPiece('settlement')}>+ Settlement</button>
+              <button type="button" onClick={() => spawnPiece('city')}>+ City</button>
+            </div>
+          </div>
           {activeGridPoint && (
             <span
               className="grid-point is-active"

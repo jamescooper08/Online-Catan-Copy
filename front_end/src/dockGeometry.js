@@ -70,6 +70,49 @@ export function findCoastalEdges(hexes) {
   )
 }
 
+export function findBoardEdges(hexes) {
+  const allEdges = hexes.flatMap((hex) => hex.edges.map((edge) => ({ hex, edge })))
+  const threshold = Math.max(12, (hexes[0]?.width ?? 100) * 0.14)
+  const boardEdges = []
+
+  for (const item of allEdges) {
+    if (boardEdges.some((other) => distance(other.edge.mid, item.edge.mid) < threshold)) continue
+    boardEdges.push(item)
+  }
+
+  return boardEdges
+}
+
+export function findBoardVertices(hexes) {
+  const threshold = Math.max(12, (hexes[0]?.width ?? 100) * 0.14)
+  const vertices = []
+
+  for (const hex of hexes) {
+    for (const vertex of hex.vertices) {
+      const existing = vertices.find((candidate) => distance(candidate, vertex) < threshold)
+      if (!existing) {
+        vertices.push({
+          ...vertex,
+          key: `${Math.round(vertex.x)}-${Math.round(vertex.y)}`,
+        })
+      }
+    }
+  }
+
+  return vertices
+}
+
+export function snapPiece(point, anchors, occupiedKeys, keyForAnchor) {
+  const ranked = anchors
+    .map((anchor) => ({ anchor, distance: distance(point, anchor.point) }))
+    .filter(({ anchor }) => !occupiedKeys.has(keyForAnchor(anchor)))
+    .sort((a, b) => a.distance - b.distance)
+  const best = ranked[0]
+  return best && best.distance <= Math.max(48, (anchors[0]?.width ?? 100) * 0.45)
+    ? best.anchor
+    : null
+}
+
 export function placementFromEdge(coastalEdge) {
   const { hex, edge } = coastalEdge
   const outwardLength = Math.hypot(edge.outward.x, edge.outward.y) || 1

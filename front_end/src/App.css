@@ -129,6 +129,51 @@ button:focus-visible {
 	pointer-events: none;
 }
 
+.pieces {
+	position: absolute;
+	inset: 0;
+	z-index: 4;
+	pointer-events: none;
+}
+
+.piece {
+	position: absolute;
+	display: block;
+	transform: translate(-50%, -50%);
+	pointer-events: auto;
+	cursor: grab;
+	touch-action: none;
+	filter: drop-shadow(0 0.16rem 0 rgb(23 43 58 / 35%));
+}
+
+.piece:active { cursor: grabbing; }
+
+.piece-road {
+	width: 2.8rem;
+	height: 0.72rem;
+	border: 2px solid color-mix(in srgb, var(--player-color) 65%, #172b3a);
+	border-radius: 0.25rem;
+	background: var(--player-color);
+	transform: translate(-50%, -50%) rotate(var(--road-angle, 0deg));
+}
+
+.piece-settlement {
+	width: 2rem;
+	height: 1.9rem;
+	border: 2px solid color-mix(in srgb, var(--player-color) 65%, #172b3a);
+	background: var(--player-color);
+	clip-path: polygon(50% 0, 100% 38%, 82% 38%, 82% 100%, 18% 100%, 18% 38%, 0 38%);
+}
+
+.piece-city {
+	width: 2.5rem;
+	height: 2rem;
+	border: 2px solid color-mix(in srgb, var(--player-color) 65%, #172b3a);
+	border-radius: 0.2rem 0.2rem 0.35rem 0.35rem;
+	background: var(--player-color);
+	clip-path: polygon(0 38%, 25% 38%, 25% 12%, 50% 0, 75% 12%, 75% 38%, 100% 38%, 88% 100%, 12% 100%);
+}
+
 .dock {
 	position: absolute;
 	width: 0;
@@ -209,6 +254,63 @@ button:focus-visible {
 	bottom: 2rem;
 	left: 50%;
 	transform: translateX(-50%);
+}
+
+.piece-controls {
+	position: absolute;
+	left: 1.25rem;
+	top: 50%;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	transform: translateY(-50%);
+}
+
+.color-controls,
+.piece-type-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.piece-controls button {
+	padding: 0.55rem 0.8rem;
+	font-size: 0.78rem;
+}
+
+.color-button {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 7rem;
+	border: 2px solid transparent;
+	background: rgb(248 241 223 / 88%);
+	color: var(--ink);
+	text-align: left;
+}
+
+.color-button:hover,
+.color-button.is-selected {
+	border-color: var(--ink);
+	background: white;
+}
+
+.color-swatch {
+	width: 0.85rem;
+	height: 0.85rem;
+	border: 2px solid rgb(23 43 58 / 35%);
+	border-radius: 50%;
+	background: var(--player-color);
+}
+
+.color-red { --player-color: #d94f49; }
+.color-blue { --player-color: #3d78b8; }
+.color-orange { --player-color: #e28a32; }
+.color-white { --player-color: #f4f1e8; }
+
+@media (max-width: 700px) {
+	.piece-controls { left: 0.5rem; }
+	.piece-controls button { padding: 0.45rem 0.6rem; }
 }
 
 .game-screen .spawn-button:hover {

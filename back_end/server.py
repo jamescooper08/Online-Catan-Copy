@@ -34,8 +34,10 @@ def default_state():
     return {
         "tiles": [],
         "docks": [dict(dock) for dock in DOCKS],
+        "pieces": [],
         "available_terrain": list(TERRAIN_TILES),
         "next_tile_id": 0,
+        "next_piece_id": 0,
     }
 
 
@@ -47,6 +49,8 @@ def load_state():
         with STATE_FILE.open("r", encoding="utf-8") as state_file:
             state = json.load(state_file)
         if {"tiles", "docks", "available_terrain", "next_tile_id"} <= state.keys():
+            state.setdefault("pieces", [])
+            state.setdefault("next_piece_id", 0)
             for dock in state["docks"]:
                 dock.setdefault("tileId", None)
                 dock.setdefault("edgeIndex", None)
@@ -74,6 +78,7 @@ def public_state():
     return {
         "tiles": state["tiles"],
         "docks": state["docks"],
+        "pieces": state["pieces"],
         "remaining_tiles": len(state["available_terrain"]),
     }
 
@@ -118,6 +123,42 @@ def handle_action(action):
                 dock["top"] = action["position"]["top"]
                 dock["tileId"] = tile_id
                 dock["edgeIndex"] = edge_index
+                return True
+
+    if action_type == "spawn_piece":
+        piece_type = action.get("pieceType")
+        if piece_type not in {"road", "settlement", "city"}:
+            return False
+        state["pieces"].append({
+            "id": state["next_piece_id"],
+            "pieceType": piece_type,
+            "color": action.get("color", "red"),
+            "position": {"left": "50%", "top": "50%"},
+            "tileId": None,
+            "edgeIndex": None,
+            "vertexKey": None,
+        })
+        state["next_piece_id"] += 1
+        return True
+
+    if action_type == "move_piece" and valid_position(action.get("position")):
+        tile_id = action.get("tileId")
+        edge_index = action.get("edgeIndex")
+        vertex_key = action.get("vertexKey")
+        if tile_id is not None and not isinstance(tile_id, int):
+            return False
+        if edge_index is not None and edge_index not in range(6):
+            return False
+        if vertex_key is not None and not isinstance(vertex_key, str):
+            return False
+        for piece in state["pieces"]:
+            if piece["id"] == action.get("id"):
+                piece.update({
+                    "position": action["position"],
+                    "tileId": tile_id,
+                    "edgeIndex": edge_index,
+                    "vertexKey": vertex_key,
+                })
                 return True
 
     if action_type == "reset_map":
