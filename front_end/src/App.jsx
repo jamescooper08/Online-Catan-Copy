@@ -29,6 +29,20 @@ function App() {
   const [draggingDockId, setDraggingDockId] = useState(null)
   const [draggingPieceId, setDraggingPieceId] = useState(null)
   const [pieceLayouts, setPieceLayouts] = useState({})
+  const resourceTypes = [
+    { id: 'wheat', label: 'Wheat', color: '#d9b841' },
+    { id: 'stone', label: 'Stone', color: '#7d7f84' },
+    { id: 'brick', label: 'Brick', color: '#b96742' },
+    { id: 'sheep', label: 'Sheep', color: '#9acb7b' },
+    { id: 'wood', label: 'Wood', color: '#6f8d4d' },
+  ]
+  const [resourceCounts, setResourceCounts] = useState({
+    wheat: 0,
+    stone: 0,
+    brick: 0,
+    sheep: 0,
+    wood: 0,
+  })
   const socketRef = useRef(null)
   const pendingActionsRef = useRef([])
   const gameScreenRef = useRef(null)
@@ -254,6 +268,13 @@ function App() {
     sendAction({ type: 'reset_map' })
   }
 
+  function changeResourceCount(resourceId, delta) {
+    setResourceCounts((currentCounts) => ({
+      ...currentCounts,
+      [resourceId]: Math.max(0, (currentCounts[resourceId] ?? 0) + delta),
+    }))
+  }
+
   function spawnPiece(pieceType) {
     sendAction({ type: 'spawn_piece', pieceType, color: selectedColor })
   }
@@ -448,9 +469,53 @@ function App() {
               )
             })}
           </div>
-          <button className="reset-button" type="button" onClick={resetMap}>
-            Reset Map
-          </button>
+          <div className="bottom-toolbar">
+            <div className="bottom-controls">
+              <button className="reset-button" type="button" onClick={resetMap}>
+                Reset Map
+              </button>
+              <button
+                className="spawn-button"
+                type="button"
+                onClick={spawnHexagon}
+                disabled={remainingTiles === 0}
+              >
+                {remainingTiles > 0 ? `Spawn Hexagon (${remainingTiles})` : 'All Tiles Spawned'}
+              </button>
+            </div>
+            <div className="resource-panel" aria-label="Resource counters">
+              {resourceTypes.map((resource) => (
+                <div className="resource-counter" key={resource.id}>
+                  <div className="resource-header">
+                    <span className="resource-swatch" style={{ background: resource.color }} aria-hidden="true" />
+                    <span>{resource.label}</span>
+                  </div>
+                  <div className="resource-controls">
+                    <button
+                      type="button"
+                      className="resource-button resource-button-minus"
+                      aria-label={`Decrease ${resource.label}`}
+                      onClick={() => changeResourceCount(resource.id, -1)}
+                    >
+                      −
+                    </button>
+                    <span className="resource-value" aria-live="polite">{resourceCounts[resource.id]}</span>
+                    <button
+                      type="button"
+                      className="resource-button resource-button-plus"
+                      aria-label={`Increase ${resource.label}`}
+                      onClick={() => changeResourceCount(resource.id, 1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="back-button" type="button" onClick={() => setPage('welcome')}>
+              Back to Welcome
+            </button>
+          </div>
           <div className="piece-controls" aria-label="Choose player color and add game pieces">
             <div className="color-controls" aria-label="Player colors">
               {playerColors.map((color) => (
@@ -497,17 +562,6 @@ function App() {
               }}
             />
           ))}
-          <button
-            className="spawn-button"
-            type="button"
-            onClick={spawnHexagon}
-            disabled={remainingTiles === 0}
-          >
-            {remainingTiles > 0 ? `Spawn Hexagon (${remainingTiles})` : 'All Tiles Spawned'}
-          </button>
-          <button className="back-button" type="button" onClick={() => setPage('welcome')}>
-            Back to Welcome
-          </button>
         </section>
       )}
     </main>
