@@ -175,7 +175,7 @@ function App() {
     const horizontalOffset = imageBounds.width * 0.92
     const verticalOffset = imageBounds.height * 0.82
     const centerX = gameScreen.width / 2
-    const centerY = gameScreen.height / 2
+    const centerY = gameScreen.height / 2 - 200
     const points = []
 
     for (let row = -12; row <= 12; row += 1) {
