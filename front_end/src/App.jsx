@@ -29,6 +29,8 @@ function App() {
   const [draggingDockId, setDraggingDockId] = useState(null)
   const [draggingPieceId, setDraggingPieceId] = useState(null)
   const [pieceLayouts, setPieceLayouts] = useState({})
+  const [robberPosition, setRobberPosition] = useState({ x: 120, y: 140 })
+  const [pieceDeleteHover, setPieceDeleteHover] = useState(false)
   const resourceTypes = [
     { id: 'wheat', label: 'Wheat', color: '#d9b841' },
     { id: 'stone', label: 'Stone', color: '#7d7f84' },
@@ -279,12 +281,31 @@ function App() {
     sendAction({ type: 'spawn_piece', pieceType, color: selectedColor })
   }
 
+  function deletePiece(pieceId) {
+    setPieceLayouts((currentLayouts) => {
+      const nextLayouts = { ...currentLayouts }
+      delete nextLayouts[pieceId]
+      return nextLayouts
+    })
+    setPieces((currentPieces) => currentPieces.filter((piece) => piece.id !== pieceId))
+    setDraggingPieceId(null)
+    setPieceDeleteHover(false)
+    sendAction({ type: 'delete_piece', id: pieceId })
+  }
+
   function movePiece(event, pieceId) {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
     const gameArea = event.currentTarget.closest('.game-screen')
     const gameScreen = gameArea.getBoundingClientRect()
     const x = Math.min(Math.max(event.clientX - gameScreen.left, 12), gameScreen.width - 12)
     const y = Math.min(Math.max(event.clientY - gameScreen.top, 12), gameScreen.height - 12)
+    const deleteZone = document.getElementById('piece-delete-zone')
+    const deleteBounds = deleteZone?.getBoundingClientRect()
+    const isHoveringDelete = deleteBounds
+      ? event.clientX >= deleteBounds.left && event.clientX <= deleteBounds.right
+        && event.clientY >= deleteBounds.top && event.clientY <= deleteBounds.bottom
+      : false
+    setPieceDeleteHover(isHoveringDelete)
     setPieces((currentPieces) => currentPieces.map((piece) =>
       piece.id === pieceId
         ? { ...piece, position: { left: `${x}px`, top: `${y}px` }, tileId: null, edgeIndex: null, vertexKey: null }
@@ -295,6 +316,19 @@ function App() {
   function releasePiece(event, pieceId) {
     if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
     event.currentTarget.releasePointerCapture(event.pointerId)
+    const deleteZone = document.getElementById('piece-delete-zone')
+    const deleteBounds = deleteZone?.getBoundingClientRect()
+    const pieceBounds = event.currentTarget.getBoundingClientRect()
+    const isInDeleteZone = deleteBounds
+      ? pieceBounds.left < deleteBounds.right && pieceBounds.right > deleteBounds.left
+        && pieceBounds.top < deleteBounds.bottom && pieceBounds.bottom > deleteBounds.top
+      : false
+
+    if (isInDeleteZone) {
+      deletePiece(pieceId)
+      return
+    }
+
     const gameArea = event.currentTarget.closest('.game-screen')
     const gameScreen = gameArea.getBoundingClientRect()
     const bounds = event.currentTarget.getBoundingClientRect()
@@ -318,6 +352,7 @@ function App() {
       ? { tileId: target?.tileId ?? null, edgeIndex: target?.edgeIndex ?? null, vertexKey: null }
       : { tileId: null, edgeIndex: null, vertexKey: target?.key ?? null }
     setDraggingPieceId(null)
+    setPieceDeleteHover(false)
     if (piece.pieceType === 'road' && target) {
       setPieceLayouts((currentLayouts) => ({
         ...currentLayouts,
@@ -341,6 +376,21 @@ function App() {
         ? { ...dock, left: `${x}px`, top: `${y}px`, tileId: null, edgeIndex: null }
         : dock,
     ))
+  }
+
+  function moveRobber(event) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+
+    const gameArea = event.currentTarget.closest('.game-screen')
+    const gameScreen = gameArea.getBoundingClientRect()
+    const x = Math.min(Math.max(event.clientX - gameScreen.left, 18), gameScreen.width - 18)
+    const y = Math.min(Math.max(event.clientY - gameScreen.top, 18), gameScreen.height - 18)
+    setRobberPosition({ x, y })
+  }
+
+  function releaseRobber(event) {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return
+    event.currentTarget.releasePointerCapture(event.pointerId)
   }
 
   function releaseDock(event, dockId) {
@@ -445,6 +495,19 @@ function App() {
               )
             })}
           </div>
+          <div className="robber-layer" aria-label="Catan robber">
+            <span
+              className="robber-token"
+              role="button"
+              aria-label="Robber"
+              title="Robber"
+              style={{ left: `${robberPosition.x}px`, top: `${robberPosition.y}px` }}
+              onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId) }}
+              onPointerMove={moveRobber}
+              onPointerUp={releaseRobber}
+              onPointerCancel={releaseRobber}
+            />
+          </div>
           <div className="pieces" aria-label="Catan game pieces">
             {pieces.map((piece) => {
               const layout = piece.id === draggingPieceId ? null : pieceLayouts[piece.id]
@@ -515,6 +578,10 @@ function App() {
             <button className="back-button" type="button" onClick={() => setPage('welcome')}>
               Back to Welcome
             </button>
+          </div>
+          <div id="piece-delete-zone" className={`piece-delete-zone${pieceDeleteHover ? ' is-hovering' : ''}`} aria-label="Delete dragged pieces">
+            <span aria-hidden="true">🗑️</span>
+            <span>Delete</span>
           </div>
           <div className="piece-controls" aria-label="Choose player color and add game pieces">
             <div className="color-controls" aria-label="Player colors">

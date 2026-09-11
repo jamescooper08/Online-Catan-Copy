@@ -161,6 +161,14 @@ def handle_action(action):
                 })
                 return True
 
+    if action_type == "delete_piece":
+        piece_id = action.get("id")
+        if not isinstance(piece_id, int):
+            return False
+        initial_count = len(state["pieces"])
+        state["pieces"] = [piece for piece in state["pieces"] if piece["id"] != piece_id]
+        return len(state["pieces"]) < initial_count
+
     if action_type == "reset_map":
         state.clear()
         state.update(default_state())

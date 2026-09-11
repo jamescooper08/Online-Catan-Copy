@@ -5,6 +5,9 @@
 	--coral: #d6524d;
 	--coral-dark: #f23731;
 	--sea: #b9dfe0;
+	--piece-scale: 0.85;
+	--dock-scale: 0.85;
+	--hex-scale: 0.85;
 }
 
 * {
@@ -68,7 +71,7 @@ button:focus-visible {
 
 .plain-hexagon {
 	display: block;
-	width: min(24vw, 220px);
+	width: calc(min(24vw, 220px) * var(--hex-scale));
 	aspect-ratio: 1 / 1;
 	position: absolute;
 	left: 50%;
@@ -146,8 +149,8 @@ button:focus-visible {
 .piece:active { cursor: grabbing; }
 
 .piece-road {
-	width: 2.8rem;
-	height: 0.72rem;
+	width: calc(2.8rem * var(--piece-scale));
+	height: calc(0.72rem * var(--piece-scale));
 	border: 2px solid color-mix(in srgb, var(--player-color) 65%, #172b3a);
 	border-radius: 0.25rem;
 	background: var(--player-color);
@@ -155,16 +158,16 @@ button:focus-visible {
 }
 
 .piece-settlement {
-	width: 2rem;
-	height: 1.9rem;
+	width: calc(2rem * var(--piece-scale));
+	height: calc(1.9rem * var(--piece-scale));
 	border: 2px solid color-mix(in srgb, var(--player-color) 65%, #172b3a);
 	background: var(--player-color);
 	clip-path: polygon(50% 0, 100% 38%, 82% 38%, 82% 100%, 18% 100%, 18% 38%, 0 38%);
 }
 
 .piece-city {
-	width: 2.5rem;
-	height: 2rem;
+	width: calc(2.5rem * var(--piece-scale));
+	height: calc(2rem * var(--piece-scale));
 	border: 2px solid color-mix(in srgb, var(--player-color) 65%, #172b3a);
 	border-radius: 0.2rem 0.2rem 0.35rem 0.35rem;
 	background: var(--player-color);
@@ -197,15 +200,15 @@ button:focus-visible {
 	z-index: 1;
 	display: grid;
 	place-items: center;
-	min-width: 4.2rem;
-	min-height: 3.65rem;
+	min-width: calc(4.2rem * var(--dock-scale));
+	min-height: calc(3.65rem * var(--dock-scale));
 	padding: 0.35rem 0.45rem 0.4rem;
 	border: 2px solid #654833;
 	border-radius: 0.9rem 0.9rem 0.55rem 0.55rem;
 	background: #f4d9a7;
 	box-shadow: 0 0.3rem 0 #654833, 0 0.55rem 0 rgb(23 43 58 / 12%);
 	color: #332419;
-	font-size: 0.72rem;
+	font-size: calc(0.72rem * var(--dock-scale));
 	line-height: 1.1;
 	text-align: center;
 	transform: translate(-50%, -50%);
@@ -221,6 +224,41 @@ button:focus-visible {
 
 .dock-marker:active {
 	cursor: grabbing;
+}
+
+.robber-layer {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	pointer-events: none;
+}
+
+.robber-token {
+	position: absolute;
+	z-index: 6;
+	width: 1.4rem;
+	height: 1.4rem;
+	border: 2px solid rgb(255 255 255 / 30%);
+	border-radius: 50%;
+	background: radial-gradient(circle at 35% 30%, #474747 0%, #1a1a1a 38%, #050505 100%);
+	box-shadow: 0 0.2rem 0.4rem rgb(23 43 58 / 30%);
+	transform: translate(-50%, -50%);
+	pointer-events: auto;
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+}
+
+.robber-token:active {
+	cursor: grabbing;
+}
+
+.robber-token::before {
+	content: "";
+	position: absolute;
+	inset: 0.22rem;
+	border: 2px solid rgb(255 255 255 / 18%);
+	border-radius: 50%;
 }
 
 .dock-mark {
@@ -334,6 +372,30 @@ button:focus-visible {
 .game-screen .spawn-button {
 	position: static;
 	transform: none;
+}
+
+.piece-delete-zone {
+	position: absolute;
+	left: 1.25rem;
+	bottom: 6.00rem;
+	z-index: 20;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 0.7rem 1rem;
+	border: 2px dashed rgb(23 43 58 / 50%);
+	border-radius: 0.9rem;
+	background: rgb(255 255 255 / 70%);
+	color: var(--muted);
+	font-weight: 800;
+	box-shadow: 0 0.35rem 0.9rem rgb(23 43 58 / 10%);
+}
+
+.piece-delete-zone.is-hovering {
+	border-color: var(--coral-dark);
+	background: rgb(214 82 77 / 16%);
+	color: var(--coral-dark);
 }
 
 .piece-controls {
